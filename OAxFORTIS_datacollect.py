@@ -1,6 +1,6 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 4/18/23
+Last Updated: 5/18/23
 This code collects data streaming in via ethernet from OAxFORTIS sounding rocket TDCs, writes data to CSV files, and presents a window
     of plots that update live. If you want further post-acquisition analysis, use the OAxFORTISplots.py code.
 
@@ -139,12 +139,13 @@ with open("Zero_{}.csv".format(modifier),"a") as f0, open("Neg1_{}.csv".format(m
         X = np.asarray(decdata[3::3])
         Y = np.asarray(decdata[4::3])
         P = np.asarray(decdata[5::3])
-        # only want real events (non-zero pulse height) and no duplicate events
-        X = X[:n]
-        Y = Y[:n]
-        P = P[:n]
         
-        if n!=0:
+        if n>1:
+            # only want real events (non-zero pulse height) and no duplicate events
+            X = X[:n]
+            Y = Y[:n]
+            P = P[:n]
+            
             ## +1 Order (270°)
             if address == ('192.168.1.11', 62510):
                 if prev_tp1 is not None:
@@ -235,4 +236,6 @@ with open("Zero_{}.csv".format(modifier),"a") as f0, open("Neg1_{}.csv".format(m
                 writer = csv.writer(fn1, delimiter='\t')
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
                 fn1.flush()
-            else: pass
+            else: 
+                print(address)
+                pass
