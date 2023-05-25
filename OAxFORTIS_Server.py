@@ -13,6 +13,17 @@ import numpy as np
 import time
 import csv
 
+class color:
+   PURPLE = '\033[95m'
+   CYAN = '\033[96m'
+   DARKCYAN = '\033[36m'
+   BLUE = '\033[94m'
+   GREEN = '\033[92m'
+   YELLOW = '\033[93m'
+   RED = '\033[91m'
+   BOLD = '\033[1m'
+   UNDERLINE = '\033[4m'
+   END = '\033[0m'
 
 #### Inputs ####
 if len(sys.argv) == 2:
@@ -30,17 +41,21 @@ s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # Bind the socket to the port
 server_address = (ip, port)
 s.bind(server_address)
-print("Socket created for: ", s.getsockname()) #check ip and port being used
-print("####### Server is listening #######")
+print("color.BOLD + "Socket created for: ", s.getsockname())
+print(color.BLUE + '####### Server is listening' + color.DARKCYAN + ' ... wait for next message #######' + color.END)
 
 
 #### Receive Data In A 'Forever Loop' And Write To Files ####
 base_t = time.time()
+hasprinted = False
 
 with open("Zero_{}.csv".format(modifier),"a") as f0, open("Neg1_{}.csv".format(modifier),"a") as fn1, open("Pos1_{}.csv".format(modifier),"a") as fp1:
     while True:
         data, address = s.recvfrom(4096)
-        print(address)
+        if data and not hasprinted:
+            print(color.PURPLE + '####### Server has begun receiving packets #######' + color.END)
+            hasprinted = True
+      
         decdata = list(ord(i) for i in data.decode('utf-16-le',errors='replace')) #decoded data
         
         #1458 total bytes in each packet; 729 items in decoded data list - first 3 are num photons, packet num, 0
