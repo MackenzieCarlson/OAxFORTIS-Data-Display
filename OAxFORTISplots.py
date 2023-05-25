@@ -156,19 +156,50 @@ plt.gcf().text(0.42, 0.17, text_n1, fontsize=10, weight="bold") #0.38, 0.17
 
 
 # Instantaneous Rate Plots
-InstRt0 = Counts0/(Time0-Time0b)
-InstRtp1 = Countsp1/(Timep1-Timep1b)
-InstRtn1 = Countsn1/(Timen1-Timen1b)
+#only calculate rate at every 1.5sec timestamp interval
+last_calculation_time = 0
+InstRt0 = []
+T0 = []
+for o in range(len(Time0)-1):
+    if Time0[o] - last_calculation_time >= 1.5:
+        #InstRt0.append(Counts0[o]/(Time0[o]-Time0b[o]))
+        InstRt0.append(1/(Time0[o]-Time0b[o]))
+        T0.append(Time0[o])
+        last_calculation_time = Time0[o]
 
-ICR0.plot(Time0,InstRt0,lw=1, color='darkorange', label='Zero Order')
+InstRtp1 = []
+Tp1 = []
+last_calculation_time = 0
+for p in range(len(Timep1)-1):
+    if Timep1[p] - last_calculation_time >= 1.5:
+        #InstRtp1.append(Countsp1[p]/(Timep1[p]-Timep1b[p]))
+        InstRtp1.append(1/(Timep1[p]-Timep1b[p]))
+        Tp1.append(Timep1[p])
+        last_calculation_time = Timep1[p]
+
+InstRtn1 = []
+Tn1 = []
+last_calculation_time = 0
+for n in range(len(Timen1)-1):
+    if Timen1[n] - last_calculation_time >= 1.5:
+        #InstRtn1.append(Countsn1[n]/(Timen1[n]-Timen1b[n]))
+        InstRtn1.append(1/(Timen1[n]-Timen1b[n]))
+        Tn1.append(Timen1[n])
+        last_calculation_time = Timen1[n]
+
+#InstRt0 = Counts0/(Time0-Time0b)
+#InstRtp1 = Countsp1/(Timep1-Timep1b)
+#InstRtn1 = Countsn1/(Timen1-Timen1b)
+
+ICR0.plot(T0,InstRt0,lw=1, color='darkorange', label='Zero Order')
 ICR0.set_ylabel('Rate of Events (counts/s)')
 ICR0.legend()
 
-ICRp1.plot(Timep1,InstRtp1,lw=1, color='mediumblue', label='+1 Order')
+ICRp1.plot(Tp1,InstRtp1,lw=1, color='mediumblue', label='+1 Order')
 ICRp1.legend()
-ICRp1.set_title('Instantaneous Count Rate Plots')
+ICRp1.set_title('Instantaneous Packet Rate Plots')
 
-ICRn1.plot(Timen1,InstRtn1,lw=1, color='darkmagenta', label='-1 Order')
+ICRn1.plot(Tn1,InstRtn1,lw=1, color='darkmagenta', label='-1 Order')
 ICRn1.set_xlabel('Packet Time Stamp (s)')
 ICRn1.legend()
 
