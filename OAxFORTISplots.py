@@ -1,6 +1,6 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 02/02/2023
+Last Updated: 05/18/2023
 This code imports three csv files made by Server.py when collecting UDP packet data from the detectors (one for each of the three spectral orders: 0 and +/-1) on OAxFORTIS. Each event/photon corresponds to a row in a csv file that contains the packet number, packet time stamp, x coordinate, y coordinate, and pulse height. XY coordinate plots, pulse height histograms, and instantaneous count rate plots are output for each spectral order in addition to showing the average count rate.
 INSTRUCTIONS: run below in command line, the modifier must be the same as what was used to run OAxFORTIS_Server.py
                     python3 OAxFORTISplots.py <modifier>
