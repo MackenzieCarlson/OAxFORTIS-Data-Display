@@ -1,41 +1,39 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 10/17/23
-*******Update: Now opens a folder within the same directory titled with the date in the form of YYYY-MM-DD. All data diles created will be placed within this folder*********
-This code collects data streaming in via ethernet from OAxFORTIS sounding rocket TDCs, writes data to CSV files, and presents a window
-    of plots that update live. If you want further post-acquisition analysis, use the OAxFORTISplots.py code.
+Last Updated: 11/16/23
+Most Recent Update: change from tab delimited csv to comma
 
-Creates a socket to listen to a specific port receiving UDP packets destined for a specific IP address.
-For each UDP packet received it will decode the raw little endian data, extract data for each event (see format below) and assign a time
-stamp to the packet; update three 2D histogram plots (one for each spectral order) presenting X and Y locations of photons on detectors,
-as well as update the live count rate; and write this data in three csv files.
+This code:
+    (1) creates a subfolder within the directory it resides in titled with today's date in the form of YYYY-MM-DD
+    (2) collects data streaming in via ethernet from OAxFORTIS sounding rocket TDCs
+    (3) writes data to CSV files within new subfolder
+    (4) presents a window of plots that update live
+If you want post-acquisition analysis, use OAxFORTISplots.py
+
+
+To capture data this code creates a socket to listen to a specific port receiving UDP packets destined for a specific IP address.For each UDP packet received it will decode the raw little endian data, extract data for each event (see format below), and assign a time stamp to the packets
 
 Anticipated UDP Packet format: (see TDC manual for byte structure of packets)
 - 1458 total bytes in each packet
 - 729 items in decoded data list - first 3 are num photons, packet num, 0
 - next 726 items are X coordinate, Y coordinate, and pulse height repeating
 ---> this means each packet can contain a max of 242 events!
-- each packet contains same number of items - even if it contains <242 events, the rest is "filler" data and is disregarded in this code
+- The packets are sent out at a minimum frequency (~1sec)
+- each packet contains same number of items - even if it contains <242 events, the rest is "filler" data (usually zeros) and is filtered out in this code
     (this means it will also send empty packets if no photons are detected)
-- if packets aren't full (such as during dark acquisition), they send at a regular interval (~1sec)
 
 ****** HOW TO RUN ******
-INITIATING INSTRUCTIONS: TDC boards must already be on and connection must already be made with computer, or else socket creation will fail.
-    In correct directory, run command below in command line. The 2nd argument is usually date of run in the form of MonDyYr.
-                python OAxFORTIS_datacollect.py <insert date/filename modifier>
+INITIATING INSTRUCTIONS: TDC boards and/or switch must already be on and connection must already be made with computer, or else socket creation will fail.
+    In correct directory, run command below in command line. The 2nd argument is a filename modifier of your choice, such as "test1" (you can just use a space if you want to be rebellious).
+                python OAxFORTIS_datacollect.py <insert modifier>
                 
-WHILE RUNNING: Upon successful creation of a socket, "#### Server is listening ####" will print to command line and you'll be told to wait
-    patiently for the next printout. Note: If you just recently powered the electronics, the CISCO switch will take ~15sec to boot up before
-    sending packets to computer even if TDCs have started sending packets out. Once a packet has been received, "####### Server has begun
-    receiving packets #######" will print to the command line. At this point if you turn on the high voltage for the spectral and/or imaging
-    channels, a window will pop up with plots & count rates that should automatically update as data is read in.
+WHILE RUNNING: Upon successful creation of a socket, "#### Server is listening ####" will print to command line and you'll be told to wait patiently for the next printout. Note: If you just recently powered the electronics, the switch will take ~15sec to boot up. Once a packet has been received, "####### Server has begun receiving packets #######" will print to the command line. At this point if you turn on the high voltage for the spectral and/or imaging channels, a window will pop up with XY 2D histogram plots & count rates that should automatically update as data is read in.
     
 TO ESCAPE: Find your way back to the terminal. ^C to stop everything.
 
-OUTPUT: Three CSV files will be written as data is read in (located in same directory as this code). You can see the contents of an individual
-    file as it's being written by using the "tail -f <filename>" command in terminal. Note: Mackenzie will eventually remember to change this
-    so it's written to FITS files instead :/
+OUTPUT: Three CSV files will be written to the newly created subfolder as data is read in.
 '''
+
 
 import socket
 import os
@@ -204,7 +202,7 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                     last_calculation_time = time.time()
                 '''
                 # Write to file
-                writer = csv.writer(fp1, delimiter='\t')
+                writer = csv.writer(fp1, delimiter=',')
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
                 fp1.flush() # clear input buffer so file can be written as data comes in
                 
@@ -240,7 +238,7 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                     last_calculation_time = time.time()
                 '''
                 # Write to file
-                writer = csv.writer(f0, delimiter='\t')
+                writer = csv.writer(f0, delimiter=',')
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
                 f0.flush()
                 
@@ -276,7 +274,7 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                     last_calculation_time = time.time()
                 '''
                 # Write to file
-                writer = csv.writer(fn1, delimiter='\t')
+                writer = csv.writer(fn1, delimiter=',')
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
                 fn1.flush()
             else:
