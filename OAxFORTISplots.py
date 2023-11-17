@@ -1,11 +1,19 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 10/18/2023
-****Need to update description****This code imports three csv files made by Server.py when collecting UDP packet data from the detectors (one for each of the three spectral orders: 0 and +/-1) on OAxFORTIS. Each event/photon corresponds to a row in a csv file that contains the packet number, packet time stamp, x coordinate, y coordinate, and pulse height. XY coordinate plots, pulse height histograms, and instantaneous count rate plots are output for each spectral order in addition to showing the average count rate.
-INSTRUCTIONS: run below in command line, the modifier must be the same as what was used to run Server.py
+Last Updated: 11/16/2023
+Most Recent Update: change from tab delimited csv to commas
+
+This code imports three csv files made by OAxFORTIS_datacollect.py when collecting UDP packet data from the detectors (one for each of the three spectral orders: 0 and +/-1). Each event/photon corresponds to a row in a csv file, with each row containing the packet number, packet time stamp, x coordinate, y coordinate, and pulse height. Calculations are done to produce the figures listed in OUTPUT.
+
+INSTRUCTIONS: run below in command line, the modifier must be the same as what was used to run OAxFORTIS_datacollect.py
                     python3 OAxFORTISplots.py <modifier>
-              You will then be asked to input the date you collected the data in the form of YYYY-MM-DD
-OUTPUT: Figure containing plots and calculations will pop up in new window. Once this window is closed, an image of the figure will be saved with filename "FORTISplots_<modifier>.png"
+              You will then be asked to input the date (YYYY-MM-DD) you collected the data
+              
+OUTPUT: 3 Windows will pop up with the following figures:
+        (1) XY 2D histograms for each order with y-axis count projections
+        (2) Enlarged and scaled projections for each other
+        (3) Instantaneous count rate plot and pulse height histogram
+        Once these windows are closed, an image of the each window will be saved with filename "FORTISplots<1,2,3>_<modifier>.png"
 '''
 
 import matplotlib.pyplot as plt
@@ -60,7 +68,7 @@ packnumS = Single.T[0]
 data0 = []       # packet data (each row contain x coordinate, y coordinate, pulse height)
 ZeroFile = './Zero_{}.csv'.format(modifier)
 if os.path.getsize(ZeroFile) > 0:  #checks if file has any data
-    Zero = np.loadtxt(ZeroFile, delimiter='\t')
+    Zero = np.loadtxt(ZeroFile, delimiter=',')
     for row in Zero:
         if int(row[4]) != 0:    #pulse height restrictions
             data0.append([int(row[2]),int(row[3]),int(row[4])])
@@ -76,7 +84,7 @@ if os.path.getsize(ZeroFile) > 0:  #checks if file has any data
 datap1 = []
 Pos1File = './Pos1_{}.csv'.format(modifier)
 if os.path.getsize(Pos1File) > 0:
-    Pos1 = np.loadtxt(Pos1File, delimiter='\t')
+    Pos1 = np.loadtxt(Pos1File, delimiter=',')
     for row in Pos1:
         if int(row[4]) != 0:
             datap1.append([int(row[2]),int(row[3]),int(row[4])])
@@ -92,7 +100,7 @@ if os.path.getsize(Pos1File) > 0:
 datan1 = []
 Neg1File = './Neg1_{}.csv'.format(modifier)
 if os.path.getsize(Neg1File) > 0:
-    Neg1 = np.loadtxt(Neg1File, delimiter='\t')
+    Neg1 = np.loadtxt(Neg1File, delimiter=',')
     for row in Neg1:
         if int(row[4]) != 0:
             datan1.append([int(row[2]),int(row[3]),int(row[4])])
