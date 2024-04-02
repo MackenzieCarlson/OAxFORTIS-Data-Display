@@ -1,9 +1,12 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 11/16/2023
-Most Recent Update: change from tab delimited csv to commas
+Created: 10/6/2022
+Last Updated: 4/1/2024
+Most Recent Update: new plot window structure, change aspect ratio and cropping of 2d histograms, plot colors
 
-This code imports three csv files made by OAxFORTIS_datacollect.py when collecting UDP packet data from the detectors (one for each of the three spectral orders: 0 and +/-1). Each event/photon corresponds to a row in a csv file, with each row containing the packet number, packet time stamp, x coordinate, y coordinate, and pulse height. Calculations are done to produce the figures listed in OUTPUT.
+This code imports three csv files made by OAxFORTIS_datacollect.py when collecting UDP packet data from the detectors (one for each of the three spectral orders: 0 and +/-1). 
+Each event/photon corresponds to a row in a csv file, with each row containing the packet number, packet time stamp, x coordinate, y coordinate, and pulse height. 
+Calculations are done to produce the figures listed in OUTPUT.
 
 INSTRUCTIONS: run below in command line, the modifier must be the same as what was used to run OAxFORTIS_datacollect.py
                     python3 OAxFORTISplots.py <modifier>
@@ -18,18 +21,15 @@ OUTPUT: 3 Windows will pop up with the following figures:
 
 import matplotlib.pyplot as plt
 import csv
-from astropy.io import fits
+import os
 import sys
 import numpy as np
-from math import log10, floor
 import matplotlib
 from matplotlib import colors
-from itertools import groupby
 np.set_printoptions(threshold=sys.maxsize)
 matplotlib.rcParams.update({'font.size': 7})
 import time
 start_time = time.time()
-import os
 class color:
     BOLD = '\033[1m'
     END = '\033[0m'
@@ -51,7 +51,7 @@ os.chdir('./{}'.format(date)) #enter correct data folder
 '''
 #### compare to just single channel
 dataS = []
-Single = np.loadtxt('Zero_May2623wsfc17.csv', delimiter='\t')
+Single = np.loadtxt('Zero_May2623wff17.csv', delimiter='\t')
 for row in Single:
     #if int(row[3]) == 0:
     dataS.append([int(row[2]),int(row[3]),int(row[4])])
@@ -68,7 +68,7 @@ packnumS = Single.T[0]
 data0 = []       # packet data (each row contain x coordinate, y coordinate, pulse height)
 ZeroFile = './Zero_{}.csv'.format(modifier)
 if os.path.getsize(ZeroFile) > 0:  #checks if file has any data
-    Zero = np.loadtxt(ZeroFile, delimiter=',')
+    Zero = np.loadtxt(ZeroFile, delimiter=',') #you'll need to change delimiter to /t (for all 3 channels) for any data collected before 11/16/23
     for row in Zero:
         if int(row[4]) != 0:    #pulse height restrictions
             data0.append([int(row[2]),int(row[3]),int(row[4])])
@@ -113,7 +113,7 @@ if os.path.getsize(Neg1File) > 0:
     Countsn1 = Countsn1[np.insert(np.diff(Times).astype(bool), 0, True)]
     packnumn1 = Neg1.T[0]
 
-#######playbacks
+####### WFF playbacks
 '''
 data0PB = []       # packet data (each row contain x coordinate, y coordinate, pulse height)
 ZeroPB = np.loadtxt('Zero_{}pb.csv'.format(modifier), delimiter='\t')
@@ -159,137 +159,101 @@ Countsn1PB = Countsn1PB[np.insert(np.diff(TimesPB).astype(bool), 0, True)]
 
 
 ###################### --- SET UP FIGURE --- #############################################################
-## Figure 2
-fig3, [CR,PH] = plt.subplots(2,figsize=(15,8))
+## Window 3: Count rate plots & pulse height distributions
+fig3, [CR,PH] = plt.subplots(2,figsize=(15,7.5))
 fig3.suptitle("{}_{}".format(date,modifier))
 
-## Figure 2
-fig2, prjs = plt.subplots(3,figsize=(15,8)) #prjs[0] is +1, prjs[1] is 0, prjs[2] is -1
+## Window 2: Enlarged & scaled projections
+fig2, prjs = plt.subplots(3,figsize=(15,7.5)) #prjs[0] is +1, prjs[1] is 0, prjs[2] is -1
 fig2.suptitle("{}_{}".format(date,modifier) + ' Projections')
 
-## Figure 1
-fig1 = plt.figure(figsize=(15,8))
-XYp1 = plt.subplot2grid((8, 12), (0, 8), rowspan=4, colspan=4)
-XY0 = plt.subplot2grid((8, 12), (0, 4), rowspan=4, colspan=4)
-XYn1 = plt.subplot2grid((8, 12), (0, 0), rowspan=4, colspan=4)
-
-
-empty = plt.subplot2grid((8, 12), (4, 0), colspan=12) #python is stupid, subplot2grid is stupid, this creates an empty space between XY plots and everything below
-empty.set_visible(False)
-
-Proj0 =plt.subplot2grid((8, 12), (5, 4), colspan=4)
-Projp1 =plt.subplot2grid((8, 12), (5, 8), colspan=4)
-Projn1 =plt.subplot2grid((8, 12), (5, 0), colspan=4)
+## Window 1: XY 2D histograms & projections
+asp = 63.5/43
+nasp = asp-1
+gs_kw = dict(width_ratios=[asp,1,asp], height_ratios=[1,1])
+fig1, ((XYn1, XY0, XYp1),(Projn1, Proj0, Projp1)) = plt.subplots(nrows=2, ncols=3, gridspec_kw=gs_kw, figsize=(15,7.5))
+fig1.subplots_adjust(hspace=.075,wspace=0)
 
 
 
-################# --- Plots of X,Y points --- ##################################################
+################# --- 2D Hist Plots of X,Y points --- ##################################################
+fullrange = [[0,16383],[0,16383]]
+fullextent = [0,16383,0,16383]
+pltscl = 41.253
+inlindis=20
+dl=20*63.5
+asp = 43/63.5
+
 if len(data0)>0:
-    ## 2D Histogram
-    '''
-    #sums,x,y = np.histogram2d(data0.T[0],data0.T[1], bins=[355,355],weights=data0.T[2], range=[[0,16383],[0,16383]])
-    #counts,_,_ = np.histogram2d(data0.T[0],data0.T[1], bins=[355,355], range=[[0,16383],[0,16383]])
-    #with np.errstate(divide='ignore', invalid='ignore'): # suppress possible divide-by-zero warnings
-        #XY0.pcolormesh(x, y, sums/counts, cmap='magma')
-    '''
-    init0,_,_ = np.histogram2d(data0.T[0], data0.T[1], bins=[355,355], range=[[1750,13250],[1500,13000]], density=True)
-    ##init0,_,_ = np.histogram2d(data0.T[0], data0.T[1], bins=[355,355], range=[[3606.3,11393.7],[3356.3,11143.7]], density=True)
-    #comp0,_,_ = np.histogram2d(data0PB.T[0], data0PB.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True)
-    #with np.errstate(divide='ignore', invalid='ignore'):  # suppress division by zero warnings
-        #hist *= norm / hist.sum(axis=0, keepdims=True)
-        #diff0 = np.absolute(init0 - comp0)/init0
-    #print(max(max(x) for x in diff0))
-    #print(np.nanargmax(np.ma.where(diff0 != 0, diff0, np.nan)))
-    XY0.imshow(init0.T, interpolation='nearest', origin='lower', aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[-100,17000,-100,17000])
-    #XY0.hist2d(data0.T[0], data0.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True, cmap='magma', norm = colors.LogNorm()) #range=[[1500,11500],[2000,12000]] #weights=data0.T[2]
+    ## Zero Order 2D Histogram
+    init0,_,_ = np.histogram2d(data0.T[0], data0.T[1], bins=[355,355], range=[[2400,12600],[1850,12050]], density=True)
+    XY0.imshow(init0.T, interpolation='nearest', origin='lower', aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[2400,12600,1850,12050])
     XY0.set_title('Zero Order')
-    #XY0.set_xlim(left=1000,right=14500)
-    #XY0.set_ylim(top=14000)
     XY0.set_xlabel('X')
     
     ## Small Projection
-    n, bins, _ = Proj0.hist(data0.T[0], 1000, range=[1750,13250], color='black', histtype='step')
+    n, bins, _ = Proj0.hist(data0.T[0], 1000, range=[2400,12600], color='black', histtype='step')
+    Proj0.set_xlim(2400,12600)
     
     ## Large Projection
-    n, bins, _ = prjs[1].hist(data0.T[0], 1500, range=[1750,13250], color='darkorange', histtype='step',label='Zero Order')
-    prjs[1].set_ylim(0,30)
+    n, bins, _ = prjs[1].hist(data0.T[0], 1500, range=[2400,12600], color='darkorange', histtype='step',label='Zero Order')
+    #prjs[1].set_yscale('log')
+    #prjs[1].set_ylim(0,1000)
+    prjs[1].set_xlim(2400,12600)
     prjs[1].legend()
+    prjs[1].set_ylabel('Projected Counts')
 
     
 if len(datap1)>0:
-    ## 2D Histogram
-    '''
-    #sums,x,y = np.histogram2d(datap1.T[0],datap1.T[1], bins=[355,355],weights=datap1.T[2], range=[[0,16383],[0,16383]])
-    #counts,_,_ = np.histogram2d(datap1.T[0],datap1.T[1], bins=[355,355], range=[[0,16383],[0,16383]])
-    #with np.errstate(divide='ignore', invalid='ignore'): # suppress possible divide-by-zero warnings
-        #XYp1.pcolormesh(x, y, sums/counts, cmap='magma')
-    '''
-    initp1,_,_ = np.histogram2d(datap1.T[0], datap1.T[1], bins=[355,355], range=[[1750,13250],[1500,13000]], density=True)
-    ##initp1,_,_ = np.histogram2d(datap1.T[0], datap1.T[1], bins=[355,355], range=[[3606.3,11393.7],[1500,13000]], density=True)
-    #compp1,_,_ = np.histogram2d(datap1PB.T[0], datap1PB.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True)
-    #with np.errstate(divide='ignore', invalid='ignore'):  # suppress division by zero warnings
-        #hist *= norm / hist.sum(axis=0, keepdims=True)
-     #   diffp1 = np.absolute(initp1 - compp1)/initp1
-    #print(max(max(x) for x in diffp1))
-    #print(np.nanargmax(np.ma.where(diffp1 != 0, diffp1, np.nan)))
-    XYp1.imshow(initp1.T, interpolation='nearest', origin='lower', aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[-100,17000,-100,17000])
-    #XYp1.hist2d(datap1.T[0], datap1.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True, cmap='magma', norm = colors.LogNorm()) #range=[[1700,13600],[2200,13000]]
+    ## +1 Order 2D Histogram
+    initp1,_,_ = np.histogram2d(datap1.T[0], datap1.T[1], bins=[355,355], range=[[3200,13300],[2300,12200]], density=True)
+    XYp1.imshow(initp1.T, interpolation='nearest', origin='lower', aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[3200,13300,2300,12200])
     XYp1.set_title('+1 Order (270°)')
-    #XYp1.set_xlim(left=1000,right=14500)
-    #XYp1.set_ylim(top=14000)
     
     ## Small Projection
-    n, bins, _ = Projp1.hist(datap1.T[0], 1000, range=[1750,13250], color='black', histtype='step')
+    n, bins, _ = Projp1.hist(datap1.T[0], 1000, range=[3200,13300], color='black', histtype='step')
+    Projp1.set_xlim(3200,13300)
     
     ## Large Projection
-    n, bins, _ = prjs[0].hist(datap1.T[0], 1500, range=[1750,13250], color='mediumblue', histtype='step',label='+1 Order')
-    prjs[0].set_ylim(0,20)
+    n, bins, _ = prjs[0].hist(datap1.T[0], 1500, range=[3200,13300], color='mediumblue', histtype='step',label='+1 Order')
+    #prjs[0].set_yscale('log')
+    #prjs[0].set_ylim(0,50)
+    prjs[0].set_xlim(3200,13300)
     prjs[0].legend()
     
     
 if len(datan1)>0:
-    ## 2D Histogram
-    '''
-    #sums,x,y = np.histogram2d(datan1.T[0],datan1.T[1], bins=[355,355],weights=datan1.T[2], range=[[0,16383],[0,16383]])
-    #counts,_,_ = np.histogram2d(datan1.T[0],datan1.T[1], bins=[355,355], range=[[0,16383],[0,16383]])
-    #with np.errstate(divide='ignore', invalid='ignore'): # suppress possible divide-by-zero warnings
-        #XYn1.pcolormesh(x, y, sums/counts, cmap='magma')
-    '''
-    initn1,_,_ = np.histogram2d(datan1.T[0], datan1.T[1], bins=[355,355], range=[[1700,13250],[1500,13000]], density=True)
-    ##initn1,_,_ = np.histogram2d(datan1.T[0], datan1.T[1], bins=[355,355], range=[[3606.3,11393.7],[1500,13000]], density=True)
-    #compn1,_,_ = np.histogram2d(datan1PB.T[0], datan1PB.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True)
-    #with np.errstate(divide='ignore', invalid='ignore'):  # suppress division by zero warnings
-        #hist *= norm / hist.sum(axis=0, keepdims=True)
-     #   diffn1 = np.absolute(initn1 - compn1)/initn1
-    #print(max(max(x) for x in diffn1))
-    #print(np.nanargmax(np.ma.where(diffn1 != 0, diffn1, np.nan)))
-    XYn1.imshow(initn1.T, interpolation='nearest', origin='lower',aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[-100,17000,-100,17000])
-    #XYn1.hist2d(datan1.T[0], datan1.T[1], bins=[355,355], range=[[0,16383],[0,16383]], density=True, cmap='magma', norm = colors.LogNorm()) #range=[[1900,11500],[1900,11000]]
+    ## -1 Order 2D Histogram
+    initn1,_,_ = np.histogram2d(datan1.T[0], datan1.T[1], bins=[355,355], range=[[3450,13350],[2000,11700]], density=True) #Steve's: [[1900,13400],[2100,12890]] #mine old: [[2000,13500],[2100,12700]]
+    XYn1.imshow(initn1.T, interpolation='nearest', origin='lower',aspect='auto', cmap='magma', norm = colors.LogNorm(), extent=[3450,13350,2000,11700])
     XYn1.set_title('-1 Order (90°)')
-    #XYn1.set_xlim(left=1000, right=11700)
-    #XYn1.set_ylim(top=11500)
     XYn1.set_ylabel('Y')
     XYn1.invert_xaxis()
     
     ## Small Projection
-    n, bins, _ = Projn1.hist(datan1.T[0], 1000, range=[1750,13250], color='black', histtype='step')
+    n, bins, _ = Projn1.hist(datan1.T[0], 1000, range=[3450,13350], color='black', histtype='step')
+    Projn1.set_xlim(3450,13350)
+    Projn1.set_ylabel('Projected Counts')
     Projn1.invert_xaxis()
     
     ## Large Projection
-    n, bins, _ = prjs[2].hist(datan1.T[0], 1500, range=[1750,13250], color='darkmagenta', histtype='step',label='-1 Order')
-    prjs[2].set_ylim(0,20)
+    n, bins, _ = prjs[2].hist(datan1.T[0], 1500, range=[3450,13350], color='mediumvioletred', histtype='step',label='-1 Order')
+    #prjs[2].set_yscale('log')
+    #prjs[2].set_ylim(0,1000)
+    prjs[2].set_xlim(3450,13350)
     prjs[2].legend()
     prjs[2].invert_xaxis()
+    prjs[2].set_xlabel('X-Pixel')
 
 
 
 ############# --- Pulse Height Histograms --- ##############################################
 if len(data0)>0:
-    n, bins, _ = PH.hist(data0.T[2], bins = np.arange(10,260,10), color = 'darkorange', histtype='step', label='Zero Order') #max pulse height is 255
+    n, bins, _ = PH.hist(data0.T[2], bins = np.arange(10,260,10), color = 'darkorange', lw=2, histtype='step', label='Zero Order') #max pulse height is 255
 if len(datap1)>0:
-    n, bins, _ = PH.hist(datap1.T[2], bins = np.arange(10,260,10), color = 'mediumblue', histtype='step', label='+1 Order')
+    n, bins, _ = PH.hist(datap1.T[2], bins = np.arange(10,260,10), color = 'mediumblue', lw=2, histtype='step', label='+1 Order')
 if len(datan1)>0:
-    n, bins, _ = PH.hist(datan1.T[2], bins = np.arange(10,260,10), color = 'darkmagenta', histtype='step', label='-1 Order')
+    n, bins, _ = PH.hist(datan1.T[2], bins = np.arange(10,260,10), color = 'mediumvioletred', lw=2, histtype='step', label='-1 Order')
 PH.legend()
 PH.set_title('Pulse Height Histograms')
 PH.set_xlabel('Pulse Height')
@@ -300,17 +264,18 @@ PH.set_ylabel('# of Events')
 ############## --- Count Rate Calculations --- ####################################################
 # Average Count Rates = num of events / total time data taken
 if len(data0)>0:
-    AvgCntRt_0 = int(sum(Counts0)/Time0[-1]-Time0[0])
-    text_0 = '%.0f counts/s'%(AvgCntRt_0) #Zero Avg Rate:
-    #plt.gcf().text(0.48, 0.26, text_0, fontsize=10, weight="bold") #0.38, 0.26 ##0.42
+    AvgCntRt_0 = len(data0.T[0])/(Time0[-1]-Time0[0]) #used to use sum(Counts0) instead of len(data0.T[0])
+    text_0 = '%.3f counts/s'%(AvgCntRt_0)
+    #print('Zero Avg Rate: ',text_0)
+    #plt.gcf().text(0.48, 0.26, text_0, fontsize=10, weight="bold") 
 if len(datap1)>0:
-    AvgCntRt_p1 = int(sum(Countsp1)/Timep1[-1]-Timep1[0])
-    text_p1 = '%.0f counts/s'%(AvgCntRt_p1) #+1 Avg Rate:
-    #plt.gcf().text(0.48, 0.35, text_p1, fontsize=10, weight="bold") #0.38, 0.35
+    AvgCntRt_p1 = len(datap1.T[0])/(Timep1[-1]-Timep1[0])
+    text_p1 = '%.0f counts/s'%(AvgCntRt_p1) 
+    #plt.gcf().text(0.48, 0.35, text_p1, fontsize=10, weight="bold") 
 if len(datan1)>0:
-    AvgCntRt_n1 = int(sum(Countsn1)/Timen1[-1]-Timen1[0])
-    text_n1 = '%.0f counts/s'%(AvgCntRt_n1) #-1 Avg Rate:
-    #plt.gcf().text(0.48, 0.17, text_n1, fontsize=10, weight="bold") #0.38, 0.17
+    AvgCntRt_n1 = len(datan1.T[0])/(Timen1[-1]-Timen1[0])
+    text_n1 = '%.0f counts/s'%(AvgCntRt_n1) 
+    #plt.gcf().text(0.48, 0.17, text_n1, fontsize=10, weight="bold") 
 
 
 # Instantaneous Rate Plots
@@ -344,11 +309,11 @@ if len(datan1)>0:
             last_calculation_time = Timen1[n]
 
 if len(data0)>0:
-    CR.plot(T0,InstRt0,lw=1, color='darkorange', label='Zero Order')
+    CR.plot(T0, InstRt0, lw=2, color='darkorange', label='Zero Order')
 if len(datap1)>0:
-    CR.plot(Tp1,InstRtp1,lw=1, color='mediumblue', label='+1 Order')
+    CR.plot(Tp1, InstRtp1, lw=2, color='mediumblue', label='+1 Order')
 if len(datan1)>0:
-    CR.plot(Tn1,InstRtn1,lw=1, color='darkmagenta', label='-1 Order')
+    CR.plot(Tn1, InstRtn1, lw=2, color='mediumvioletred', label='-1 Order')
 CR.legend()
 CR.set_ylabel('Instantaneous Rate of Events (counts/s)')
 CR.set_xlabel('Packet Time Stamp (s)')
@@ -356,11 +321,8 @@ CR.set_title('Instantaneous Count Rate Plots')
 
 
 
-plt.subplots_adjust(wspace=0.0,hspace=0.0)
+
 plt.show()
-#Zero.close()
-#Pos1.close()
-#Neg1.close()
 fig1.savefig('FORTISplots1_{}.png'.format(sys.argv[1]), bbox_inches='tight',dpi=1200)
 fig2.savefig('FORTISplots2_{}.png'.format(sys.argv[1]), bbox_inches='tight',dpi=1200)
 fig3.savefig('FORTISplots3_{}.png'.format(sys.argv[1]), bbox_inches='tight',dpi=1200)
