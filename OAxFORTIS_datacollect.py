@@ -1,7 +1,8 @@
 '''
 Author: Mackenzie Carlson
-Last Updated: 11/16/23
-Most Recent Update: change from tab delimited csv to comma
+Created: 3/2/2023
+Last Updated: 3/9/2024
+Most Recent Update: edit aspect ratio and cropping of histograms
 
 This code:
     (1) creates a subfolder within the directory it resides in titled with today's date in the form of YYYY-MM-DD
@@ -42,8 +43,6 @@ import numpy as np
 import time
 import datetime
 import csv
-from astropy.io import fits
-from astropy.table import Table
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib import colors
@@ -84,7 +83,7 @@ else:
 
 ## ---- Create A Socket ---- ##
 #TDCs are set to send packets to this ip,port combo
-ip = ''
+ip = ''     #open to broadcast ip='' and adapter set to 192.168.1.2 -- for unicast set ip='192.168.1.100' and same for adapter
 port = 60000
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_address = (ip, port)
@@ -93,9 +92,10 @@ print(color.BOLD + "Socket created for: ", s.getsockname()) #check ip and port b
 print(color.BLUE + '####### Server is listening' + color.DARKCYAN + ' ... wait for next message #######' + color.END)
 
 ## ---- Initiate Empty Plots ---- ##
-gs_kw = dict(width_ratios=[1,1,1], height_ratios=[1.4,1] )
+asp = 63.5/43
+gs_kw = dict(width_ratios=[asp,1,asp], height_ratios=[1,1] )
 fig, ((XYn1, XY0, XYp1), (txtn1, txt0, txtp1)) = plt.subplots(nrows=2, ncols=3, sharey=True, gridspec_kw=gs_kw, figsize=(16,7))
-fig.subplots_adjust(hspace=0,wspace=0)
+fig.subplots_adjust(hspace=.075,wspace=0)
 
 XYp1.set_title('+1 Order (270°)')
 XY0.set_title('Zero Order')
@@ -104,17 +104,16 @@ txtp1.axis('off')
 txt0.axis('off')
 txtn1.axis('off')
 
-vmin = 0
+vmin = 1000 #arbitrary so imshow doesn't yell at me :(
 vmax = 10000
-plot1 = XYp1.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[0,16383,0,16383], aspect='auto')
-#plot1 = XYp1.pcolormesh(x, y, hist1w/hist1, cmap='magma')
-plot2 = XY0.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[0,16383,0,16383], aspect='auto')
-plot3 = XYn1.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[0,16383,0,16383], aspect='auto')
+plot1 = XYp1.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[1700,13800,2100,13090], aspect='auto')
+plot2 = XY0.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[1300,13500,1750,13090], aspect='auto')
+plot3 = XYn1.imshow(np.zeros((10, 10)), interpolation='nearest', cmap='magma', norm=colors.LogNorm(vmin=vmin,vmax=vmax), origin='lower', extent=[1900,13400,2100,13090], aspect='auto')
 XYn1.invert_xaxis()
 
-text1 = XYp1.text(0.15,-0.2,'', fontsize=10, weight="bold", transform=XYp1.transAxes) #0.38, 0.35 pos1
-text2 = XY0.text(0.15,-0.2,'', fontsize=10, weight="bold", transform=XY0.transAxes) #0.38, 0.26 zero
-text3 = XYn1.text(0.2,-0.2,'', fontsize=10, weight="bold", transform=XYn1.transAxes) #0.38, 0.17 neg1
+text1 = XYp1.text(0.15,-0.2,'', fontsize=10, weight="bold", transform=XYp1.transAxes) 
+text2 = XY0.text(0.1,-0.2,'', fontsize=10, weight="bold", transform=XY0.transAxes) 
+text3 = XYn1.text(0.2,-0.2,'', fontsize=10, weight="bold", transform=XYn1.transAxes) 
 
 
 
@@ -127,12 +126,6 @@ last_calculation_time = base_t
 prev_tp1 = None
 prev_t0 = None
 prev_tn1 = None
-cntsp1 = []
-cnts0 = []
-cntsn1 = []
-CntRt_p1 = 0
-CntRt_0 = 0
-CntRt_n1 = 0
 newhist1 = []
 newhist2 = []
 newhist3 = []
@@ -169,9 +162,10 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
             P = P[:n]
             #P = P[P!=0]
             
-            ## +1 Order (270°)
+            ###############################################
+            ################ +1 Order (270°) ##############
+            ###############################################
             if address == ('192.168.1.11', 62510):
-                #'''
                 if prev_tp1 is not None:
                     del_tp1 = t - prev_tp1
                 else:
@@ -179,12 +173,9 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 prev_tp1 = t
                 CntRt_p1 = n/del_tp1
                 text1.set_text('+1 Order Inst Rate: %.0f counts/s'%(CntRt_p1))
-                #'''
-                #cntsp1.append(n)
-                #XYp1.hist2d(np.asarray(Xp1), np.asarray(Yp1), bins=[355,355], range=[[0,16383],[0,16383]], density=True, cmap='plasma', norm = colors.LogNorm()) #range=[[0,13600],[2200,13000]]
-                newhist1,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[0,16383],[0,16383]])
+                newhist1,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[1700,13800],[2100,13090]])
                 hist1 = np.add(hist1,newhist1)
-                '''
+                ''' uncommenting this chunk of code (and those in other 2 orders) allows each spectral channel to update individually
                 if  n<50:
                     text1.set_text('+1 Order Inst Rate: %.0f counts/s'%(CntRt_p1))
                     vmin = hist1.min()
@@ -204,11 +195,12 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 # Write to file
                 writer = csv.writer(fp1, delimiter=',')
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
-                fp1.flush() # clear input buffer so file can be written as data comes in
+                fp1.flush() # clear input buffer so file can be written & saved live
                 
-            ## Zero Order
+            ###############################################
+            ################## Zero Order #################
+            ###############################################
             elif address == ('192.168.1.10', 62510):
-                #'''
                 if prev_t0 is not None:
                     del_t0 = t - prev_t0
                 else:
@@ -216,9 +208,7 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 prev_t0 = t
                 CntRt_0 = n/del_t0
                 text2.set_text('Zero Order Inst Rate: %.0f counts/s'%(CntRt_0))
-                #'''
-                #cnts0.append(n)
-                newhist2,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[0,16383],[0,16383]])
+                newhist2,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[1300,13500],[1750,13090]])
                 hist2 = np.add(hist2,newhist2)
                 '''
                 if n<50:
@@ -242,9 +232,10 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 writer.writerows(zip(packetnum,times,X,Y,P,num_photons))
                 f0.flush()
                 
-            ## -1 Order (90°)
+            ##############################################
+            ################ -1 Order (90°) ##############
+            ##############################################
             elif address == ('192.168.1.12', 62510):
-                #'''
                 if prev_tn1 is not None:
                     del_tn1 = t - prev_tn1
                 else:
@@ -252,9 +243,7 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 prev_tn1 = t
                 CntRt_n1 = n/del_tn1
                 text3.set_text('-1 Order Inst Rate: %.0f counts/s'%(CntRt_n1))
-                #'''
-                #cntsn1.append(n)
-                newhist3,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[0,16383],[0,16383]])
+                newhist3,x,y = np.histogram2d(X,Y, bins=[355,355], range=[[1900,13400],[2100,13090]])
                 hist3 = np.add(hist3,newhist3)
                 '''
                 if n<50:
@@ -281,39 +270,29 @@ with open("./{}/Zero_{}.csv".format(today,modifier),"a") as f0, open("./{}/Neg1_
                 print(address)
                 pass
             
-            #### Update plotting & live count rate for each channel at the same time
+            #######################################################################
+            ########### Update plotting for each channel simultaneously ###########
+            #######################################################################
             t_int = 0.75
             if  time.time() - last_calculation_time >= t_int:
-                #sumcntsp1 = sum(cntsp1)
-                #CntRt_p1 = sumcntsp1/t_int
-                #text1.set_text('+1 Order Inst Rate: %.0f counts/s'%(CntRt_p1))
                 if len(newhist1) > 1:
                     vmin = hist1.min()
                     vmax = hist1.max()
                     plot1.set_data(hist1.T)
                     plot1.autoscale()
                 
-                #sumcnts0 = sum(cnts0)
-                #CntRt_0 = sumcnts0/t_int
-                #text2.set_text('Zero Order Inst Rate: %.0f counts/s'%(CntRt_0))
                 if len(newhist2) > 1:
                     vmin = hist2.min()
                     vmax = hist2.max()
                     plot2.set_data(hist2.T)
                     plot2.autoscale()
                 
-                #sumcntsn1 = sum(cntsn1)
-                #CntRt_n1 = sumcntsn1/t_int
-                #text3.set_text('-1 Order Inst Rate: %.0f counts/s'%(CntRt_n1))
                 if len(newhist3) > 1:
                     vmin = hist3.min()
                     vmax = hist3.max()
                     plot3.set_data(hist3.T)
                     plot3.autoscale()
                 
-                #cntsp1 = [0]
-                #cnts0 = [0]
-                #cntsn1 = [0]
                 last_calculation_time = time.time()
                 plt.pause(.000001)
 
