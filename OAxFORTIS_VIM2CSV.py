@@ -394,7 +394,7 @@ if prompt2 == 'yes' or prompt2 == 'y':
     fig1.savefig('FORTISplots1_VIM#{}.png'.format(filenum), bbox_inches='tight',dpi=1200)
     fig2.savefig('FORTISplots2_VIM#{}.png'.format(filenum), bbox_inches='tight',dpi=1200)
     fig3.savefig('FORTISplots3_VIM#{}.png'.format(filenum), bbox_inches='tight',dpi=1200)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    #print("--- %s seconds ---" % (time.time() - start_time))
                 
     
     
